@@ -323,12 +323,16 @@ tbody tr:last-child td{border-bottom:none}
 </header>
 
 <div class="wrap">
-  <!-- TABS (persis SIPESAN; hanya Scanner aktif, lain → SIPESAN utama) -->
-  <div class="tabs">
-    <button class="tab-btn" id="tb-dash" onclick="gotoSipesan('dash')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> Dashboard</button>
-    <button class="tab-btn" id="tb-peserta" onclick="gotoSipesan('peserta')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> Peserta &amp; Email</button>
-    <button class="tab-btn active" id="tb-scan"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="3" y1="12" x2="21" y2="12"/></svg> Scanner</button>
-    <button class="tab-btn" id="tb-manual" onclick="gotoSipesan('manual')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Check-in Manual</button>
+  <!-- MODE SCANNER — halaman terpisah, tombol kembali ke SIPESAN -->
+  <div style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:20px;box-shadow:var(--shadow-sm)">
+    <button class="btn btn-outline btn-sm" onclick="kembaliSipesan()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Kembali ke SIPESAN</button>
+    <div style="display:flex;align-items:center;gap:8px;margin-left:2px">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:var(--teal-deeper);color:#fff"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="3" y1="12" x2="21" y2="12"/></svg></span>
+      <div>
+        <div style="font-size:14px;font-weight:800;color:var(--text-dark);line-height:1.2">Mode Scanner Kamera</div>
+        <div style="font-size:11px;color:var(--text-light)">Halaman khusus perangkat resmi · terpisah dari SIPESAN</div>
+      </div>
+    </div>
   </div>
 
   <!-- ═══ SCANNER ═══ -->
@@ -405,10 +409,9 @@ function saveCfg(c){ localStorage.setItem(LS, JSON.stringify(c)); }
 
 // ── URL builder ──
 function execBase(){ return (CFG&&CFG.url)?CFG.url:''; }
-function sipesanUrl(app){ const b=execBase(); if(!b) return '#'; return b+(b.indexOf('?')>=0?'&':'?')+'app=checkin'; }
-function gotoSipesan(tab){
-  const b=execBase(); if(!b){ alert('URL SIPESAN belum diatur.'); return; }
-  // buka SIPESAN utama (semua tab dikelola di sana)
+function kembaliSipesan(){
+  const b=execBase();
+  if(!b){ alert('URL SIPESAN belum diatur.'); return; }
   window.location.href = b+(b.indexOf('?')>=0?'&':'?')+'app=checkin';
 }
 
