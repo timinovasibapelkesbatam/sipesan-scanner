@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Scanner Presensi — SIPESAN</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{ --teal:#0eb4ac; --teal-deep:#077a75; --dark:#0f172a; --ok:#059669; --warn:#d97706; --err:#dc2626; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:#0b1220;color:#e2e8f0;min-height:100vh}
+  .wrap{max-width:520px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+  header{background:linear-gradient(135deg,var(--teal-deep),var(--teal));padding:16px 20px;display:flex;align-items:center;gap:12px}
+  header .logo{width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:18px}
+  header h1{font-size:16px;font-weight:800;color:#fff}
+  header p{font-size:11px;color:#c9f2ee}
+  .screen{flex:1;display:flex;flex-direction:column;padding:18px}
+  .hidden{display:none!important}
+
+  /* Setup / PIN */
+  .card{background:#111c2e;border:1px solid #1e293b;border-radius:16px;padding:22px;margin-bottom:14px}
+  label{display:block;font-size:12.5px;font-weight:700;color:#94a3b8;margin-bottom:6px;margin-top:12px}
+  label:first-child{margin-top:0}
+  input,select{width:100%;padding:12px 14px;background:#0b1220;border:1.5px solid #263449;border-radius:10px;color:#e2e8f0;font-size:15px;outline:none;font-family:inherit}
+  input:focus,select:focus{border-color:var(--teal)}
+  .btn{width:100%;padding:14px;border:none;border-radius:11px;font-size:15px;font-weight:800;cursor:pointer;margin-top:16px;font-family:inherit}
+  .btn-primary{background:var(--teal);color:#fff}
+  .btn-primary:active{background:var(--teal-deep)}
+  .btn-ghost{background:transparent;border:1.5px solid #334155;color:#cbd5e1}
+  .hint{font-size:11.5px;color:#64748b;line-height:1.6;margin-top:10px}
+  .title{font-size:19px;font-weight:800;color:#fff;margin-bottom:4px}
+  .sub{font-size:12.5px;color:#94a3b8;margin-bottom:16px}
+
+  /* Mode bar */
+  .modebar{display:flex;gap:8px;margin-bottom:14px}
+  .modebar button{flex:1;padding:10px 6px;border:1.5px solid #263449;background:#0b1220;color:#94a3b8;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+  .modebar button.active{background:var(--teal);border-color:var(--teal);color:#fff}
+
+  /* Scanner */
+  #reader{width:100%;border-radius:16px;overflow:hidden;background:#000;aspect-ratio:1}
+  #reader video{border-radius:16px}
+  .scanhint{text-align:center;font-size:12.5px;color:#94a3b8;margin-top:12px;line-height:1.6}
+
+  /* Result toast */
+  .result{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);width:calc(100% - 36px);max-width:484px;border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 12px 40px rgba(0,0,0,.5);animation:pop .25s ease;z-index:50}
+  @keyframes pop{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+  .result .ico{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;color:#fff;font-weight:800}
+  .result .txt b{display:block;font-size:15px;font-weight:800;color:#0f172a}
+  .result .txt span{font-size:12.5px;color:#475569}
+  .r-ok{background:#ecfdf5;border:1.5px solid #6ee7b7}.r-ok .ico{background:var(--ok)}
+  .r-warn{background:#fffbeb;border:1.5px solid #fcd34d}.r-warn .ico{background:var(--warn)}
+  .r-err{background:#fef2f2;border:1.5px solid #fca5a5}.r-err .ico{background:var(--err)}
+
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .topbar .who{font-size:12px;color:#94a3b8}
+  .topbar .lock{background:transparent;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:6px 10px;font-size:11.5px;font-weight:700;cursor:pointer}
+  .statline{display:flex;gap:8px;margin-top:12px}
+  .stat{flex:1;background:#111c2e;border:1px solid #1e293b;border-radius:10px;padding:10px;text-align:center}
+  .stat b{display:block;font-size:20px;font-weight:800;color:#fff}
+  .stat span{font-size:10.5px;color:#94a3b8}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">📷</div>
+    <div><h1>Scanner Presensi</h1><p>SIPESAN · Bapelkes Batam</p></div>
+  </header>
+
+  <!-- ══ SETUP (sekali per perangkat) ══ -->
+  <div class="screen" id="setupScreen">
+    <div class="title">Konfigurasi Perangkat</div>
+    <div class="sub">Isi sekali di perangkat resmi (front office / kelas). Tersimpan di perangkat ini.</div>
+    <div class="card">
+      <label>URL Aplikasi SIPESAN (/exec)</label>
+      <input type="url" id="cfgUrl" placeholder="https://script.google.com/macros/s/AKf.../exec" autocomplete="off">
+      <label>Token Scan Rahasia</label>
+      <input type="text" id="cfgToken" placeholder="mis. SIPESAN2026" autocomplete="off">
+      <label>PIN Petugas (untuk kunci perangkat)</label>
+      <input type="password" id="cfgPin" inputmode="numeric" placeholder="mis. 1234" autocomplete="off">
+      <button class="btn btn-primary" onclick="simpanConfig()">Simpan &amp; Lanjut</button>
+      <div class="hint">URL &amp; Token didapat dari admin SIPESAN (menu Pengaturan). PIN kamu tentukan sendiri untuk mengunci perangkat ini agar tidak sembarang orang bisa scan.</div>
+    </div>
+  </div>
+
+  <!-- ══ PIN GATE ══ -->
+  <div class="screen hidden" id="pinScreen">
+    <div class="title">Masukkan PIN Petugas</div>
+    <div class="sub">Perangkat terkunci. Masukkan PIN untuk mulai memindai.</div>
+    <div class="card">
+      <label>PIN</label>
+      <input type="password" id="pinInput" inputmode="numeric" placeholder="••••" autocomplete="off" onkeydown="if(event.key==='Enter')cekPin()">
+      <button class="btn btn-primary" onclick="cekPin()">Buka Scanner</button>
+      <div id="pinErr" class="hint" style="color:#f87171;display:none">PIN salah, coba lagi.</div>
+      <button class="btn btn-ghost" onclick="resetConfig()" style="margin-top:10px">Atur Ulang Perangkat</button>
+    </div>
+  </div>
+
+  <!-- ══ SCANNER ══ -->
+  <div class="screen hidden" id="scanScreen">
+    <div class="topbar">
+      <div class="who">🟢 Aktif · perangkat resmi</div>
+      <button class="lock" onclick="kunci()">🔒 Kunci</button>
+    </div>
+    <div class="modebar">
+      <button id="m-checkin" class="active" onclick="setMode('checkin')">Check-in</button>
+      <button id="m-presensi" onclick="setMode('presensi')">Presensi</button>
+      <button id="m-checkout" onclick="setMode('checkout')">Check-out</button>
+    </div>
+    <div id="reader"></div>
+    <div class="scanhint">Arahkan QR peserta ke dalam bingkai. Mode aktif: <b id="modeLabel">Check-in</b></div>
+    <div class="statline">
+      <div class="stat"><b id="stOk">0</b><span>Berhasil</span></div>
+      <div class="stat"><b id="stDup">0</b><span>Sudah tercatat</span></div>
+      <div class="stat"><b id="stErr">0</b><span>Gagal</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="resultHost"></div>
+
+<script>
+// ═══ Konfigurasi tersimpan di perangkat (localStorage) ═══
+const LS = 'sipesan_scanner_cfg';
+let CFG = null;         // { url, token, pin }
+let MODE = 'checkin';
+let scanner = null;
+let lastScan = { v:'', t:0 };
+let stats = { ok:0, dup:0, err:0 };
+
+function loadCfg(){ try{ return JSON.parse(localStorage.getItem(LS)||'null'); }catch(e){ return null; } }
+function saveCfg(c){ localStorage.setItem(LS, JSON.stringify(c)); }
+
+function simpanConfig(){
+  const url = document.getElementById('cfgUrl').value.trim();
+  const token = document.getElementById('cfgToken').value.trim();
+  const pin = document.getElementById('cfgPin').value.trim();
+  if(!url || !/^https:\/\/.+\/exec$/.test(url)){ alert('URL harus berupa link /exec SIPESAN yang valid.'); return; }
+  if(!token){ alert('Token scan wajib diisi.'); return; }
+  if(!pin || pin.length<3){ alert('PIN minimal 3 digit.'); return; }
+  CFG = { url, token, pin };
+  saveCfg(CFG);
+  show('pinScreen');
+  // langsung minta PIN pertama kali
+}
+
+function resetConfig(){
+  if(!confirm('Atur ulang perangkat? URL, token, dan PIN akan dihapus dari perangkat ini.')) return;
+  localStorage.removeItem(LS); CFG=null;
+  document.getElementById('cfgUrl').value='';
+  document.getElementById('cfgToken').value='';
+  document.getElementById('cfgPin').value='';
+  show('setupScreen');
+}
+
+function cekPin(){
+  const v = document.getElementById('pinInput').value.trim();
+  if(v === CFG.pin){
+    document.getElementById('pinInput').value='';
+    document.getElementById('pinErr').style.display='none';
+    show('scanScreen');
+    startScanner();
+  } else {
+    document.getElementById('pinErr').style.display='';
+  }
+}
+
+function kunci(){
+  stopScanner();
+  show('pinScreen');
+}
+
+function show(id){
+  ['setupScreen','pinScreen','scanScreen'].forEach(s=>{
+    document.getElementById(s).classList.toggle('hidden', s!==id);
+  });
+}
+
+function setMode(m){
+  MODE = m;
+  ['checkin','presensi','checkout'].forEach(x=>{
+    document.getElementById('m-'+x).classList.toggle('active', x===m);
+  });
+  document.getElementById('modeLabel').textContent =
+    m==='checkin'?'Check-in':m==='presensi'?'Presensi':'Check-out';
+}
+
+// ═══ Kamera QR (html5-qrcode) — BERFUNGSI karena di luar frame GAS ═══
+function startScanner(){
+  if(scanner) return;
+  scanner = new Html5Qrcode('reader');
+  scanner.start(
+    { facingMode:'environment' },
+    { fps:10, qrbox:{ width:230, height:230 } },
+    onScan,
+    ()=>{} // abaikan error frame-per-frame
+  ).catch(err=>{
+    alert('Tidak bisa membuka kamera: '+err+'\n\nPastikan izin kamera diizinkan untuk halaman ini.');
+  });
+}
+function stopScanner(){
+  if(scanner){ try{ scanner.stop().then(()=>{ scanner.clear(); scanner=null; }); }catch(e){ scanner=null; } }
+}
+
+function onScan(text){
+  const now = Date.now();
+  // cooldown: QR sama dalam 3 detik diabaikan
+  if(text === lastScan.v && (now - lastScan.t) < 3000) return;
+  lastScan = { v:text, t:now };
+
+  // ekstrak ID peserta dari QR. QR bisa berisi "PST-0002" atau URL berisi ?scan=PST-0002
+  let id = text.trim();
+  const m = id.match(/[?&]scan=([^&]+)/i);
+  if(m) id = decodeURIComponent(m[1]);
+  id = id.toUpperCase();
+  if(!/^PST-/.test(id)){ tampilResult('err','QR tidak dikenali', id.substring(0,24)); beep(false); return; }
+
+  kirimPresensi(id);
+}
+
+// kirim ke backend SIPESAN via /exec?scan=...&mode=...&token=...
+// pakai fetch; jika CORS menghalangi baca respons, tetap terhitung terkirim (no-cors fallback)
+function kirimPresensi(id){
+  const url = CFG.url + (CFG.url.indexOf('?')>=0?'&':'?') +
+    'scan=' + encodeURIComponent(id) + '&mode=' + encodeURIComponent(MODE) + '&token=' + encodeURIComponent(CFG.token) + '&ajax=1';
+  fetch(url, { method:'GET' })
+    .then(r=>r.json())
+    .then(r=>{
+      if(r.ok){ stats.ok++; tampilResult('ok', r.nama||id, r.detail||'Tercatat'); beep(true); }
+      else if(r.status==='sudah'){ stats.dup++; tampilResult('warn', r.nama||id, r.detail||'Sudah tercatat'); beep(true); }
+      else { stats.err++; tampilResult('err', r.nama||id, r.detail||r.message||'Gagal'); beep(false); }
+      refreshStats();
+    })
+    .catch(()=>{
+      // fallback jika respons tidak bisa dibaca (CORS) — kirim tanpa baca hasil
+      fetch(url, { method:'GET', mode:'no-cors' }).finally(()=>{
+        stats.ok++; tampilResult('ok', id, 'Terkirim (mode '+MODE+')'); beep(true); refreshStats();
+      });
+    });
+}
+
+function refreshStats(){
+  document.getElementById('stOk').textContent = stats.ok;
+  document.getElementById('stDup').textContent = stats.dup;
+  document.getElementById('stErr').textContent = stats.err;
+}
+
+let resultTimer = null;
+function tampilResult(kind, judul, detail){
+  const host = document.getElementById('resultHost');
+  const cls = kind==='ok'?'r-ok':kind==='warn'?'r-warn':'r-err';
+  const ico = kind==='ok'?'✓':kind==='warn'?'↻':'✕';
+  host.innerHTML = '<div class="result '+cls+'"><div class="ico">'+ico+'</div>'+
+    '<div class="txt"><b>'+judul+'</b><span>'+detail+'</span></div></div>';
+  clearTimeout(resultTimer);
+  resultTimer = setTimeout(()=>{ host.innerHTML=''; }, 2600);
+}
+
+// beep sederhana via WebAudio
+let audioCtx = null;
+function beep(success){
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.frequency.value = success ? 880 : 300;
+    g.gain.value = 0.15;
+    o.start(); setTimeout(()=>{ o.stop(); }, success?110:220);
+  }catch(e){}
+}
+
+// ═══ Init ═══
+(function init(){
+  CFG = loadCfg();
+  if(!CFG){ show('setupScreen'); }
+  else { show('pinScreen'); }
+})();
+</script>
+</body>
+</html>
